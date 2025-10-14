@@ -49,7 +49,21 @@ const PlaceholderLogo =
   );
 
 function CompanyLogo({ url, alt }) {
-  const [src, setSrc] = useState(url ? absoluteUrl(url) : PlaceholderLogo);
+  const backendBase = "https://aerojob-backend-production.up.railway.app"; // ✅ live backend
+  let fixedUrl = url || "";
+
+  // 🧠 auto-replace old localhost links
+  if (fixedUrl.includes("localhost:5000")) {
+    fixedUrl = fixedUrl.replace("http://localhost:5000", backendBase);
+  }
+
+  // prepend backend if relative path
+  if (fixedUrl && !fixedUrl.startsWith("http")) {
+    fixedUrl = `${backendBase}${fixedUrl.startsWith("/") ? "" : "/"}${fixedUrl}`;
+  }
+
+  const [src, setSrc] = useState(fixedUrl || PlaceholderLogo);
+
   return (
     <img
       src={src || PlaceholderLogo}
