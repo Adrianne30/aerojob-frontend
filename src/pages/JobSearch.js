@@ -1,6 +1,6 @@
 // src/pages/Jobs.js
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { jobsAPI, normalizeWebsite } from "../utils/api"; // ✅ import normalizeWebsite
+import { jobsAPI, normalizeWebsite, absoluteUrl } from "../utils/api"; 
 import {
   Search,
   Briefcase,
@@ -10,12 +10,6 @@ import {
 } from "lucide-react";
 import LoadingSpinner from "../components/LoadingSpinner";
 import toast from "react-hot-toast";
-
-/* --- API base for resolving relative image URLs --- */
-const API_BASE =
-  import.meta?.env?.VITE_API_BASE_URL ||
-  process.env.REACT_APP_API_BASE_URL ||
-  "http://localhost:5000";
 
 /* --- time ago helper --- */
 const timeAgo = (isoOrDate) => {
@@ -44,21 +38,18 @@ const JOB_TYPES = [
   { value: "contract", label: "Contract" },
 ];
 
-/* --- fallback logo --- */
+/* --- fallback logo (small building icon) --- */
 const PlaceholderLogo =
   "data:image/svg+xml;utf8," +
   encodeURIComponent(
-    `<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'><rect width='100%' height='100%' fill='#f3f4f6'/><text x='50%' y='54%' font-size='16' text-anchor='middle' fill='#9ca3af'>🏢</text></svg>`
+    `<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'>
+      <rect width='100%' height='100%' fill='#f3f4f6'/>
+      <text x='50%' y='54%' font-size='16' text-anchor='middle' fill='#9ca3af'>🏢</text>
+    </svg>`
   );
 
-function resolveUrl(u) {
-  if (!u) return "";
-  if (/^https?:\/\//i.test(u)) return u;
-  return `${API_BASE}${u.startsWith("/") ? "" : "/"}${u}`;
-}
-
 function CompanyLogo({ url, alt }) {
-  const [src, setSrc] = useState(url ? resolveUrl(url) : "");
+  const [src, setSrc] = useState(url ? absoluteUrl(url) : PlaceholderLogo);
   return (
     <img
       src={src || PlaceholderLogo}
@@ -73,8 +64,9 @@ function CompanyLogo({ url, alt }) {
 /* ---------- analytics helper --------- */
 async function logSearchTerm(term) {
   try {
-    const base = API_BASE.replace(/\/$/, "");
-    await fetch(`${base}/api/analytics/search`, {
+    const base = import.meta?.env?.VITE_API_BASE_URL || process.env.REACT_APP_API_BASE_URL;
+    if (!base) return;
+    await fetch(`${base.replace(/\/$/, "")}/api/analytics/search`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ term }),
@@ -279,7 +271,7 @@ export default function Jobs() {
 
 /* --- Components --- */
 function JobCard({ job }) {
-  const logoUrl = job?.company?.logoUrl ? resolveUrl(job.company.logoUrl) : "";
+  const logoUrl = job?.company?.logoUrl ? absoluteUrl(job.company.logoUrl) : "";
 
   return (
     <article className="group bg-white border rounded-2xl shadow-sm p-5 hover:shadow-md transition">
@@ -318,7 +310,6 @@ function JobCard({ job }) {
       </ul>
 
       <div className="flex items-center gap-3">
-        {/* ✅ FIXED Apply Now button */}
         <button
           onClick={() => {
             const site = normalizeWebsite(job?.company?.website);
