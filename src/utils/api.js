@@ -1,27 +1,11 @@
 import axios from 'axios';
 
-/* -------- Base URL resolver (Vite/CRA) -------- */
-function pickEnvBase() {
-  const vite =
-    (typeof import.meta !== 'undefined' &&
-      (import.meta.env?.VITE_API_BASE_URL || import.meta.env?.VITE_API_URL)) ||
-    null;
-  const cra =
-    (typeof process !== 'undefined' &&
-      (process.env.REACT_APP_API_BASE_URL || process.env.REACT_APP_API_URL)) ||
-    null;
-  return vite || cra || 'http://localhost:5000';
-}
+const API_BASE_RESOLVED =
+  import.meta?.env?.VITE_API_BASE_URL ||
+  process.env.REACT_APP_API_BASE_URL ||
+  "https://aerojob-backend-production.up.railway.app"; 
+const API_ROOT = `${API_BASE_RESOLVED.replace(/\/+$/, '')}/api`;
 
-function buildRoots(raw) {
-  let base = String(raw || '').trim();
-  base = base.replace(/\/+$/, '');
-  base = base.replace(/\/api$/i, '');
-  const API_ROOT = `${base}/api`;
-  return { API_BASE_RESOLVED: base, API_ROOT };
-}
-
-const { API_BASE_RESOLVED, API_ROOT } = buildRoots(pickEnvBase());
 export { API_BASE_RESOLVED as API_BASE, API_ROOT };
 
 /* -------- Axios instances -------- */
@@ -87,7 +71,6 @@ export function absoluteUrl(path) {
   return /^https?:\/\//i.test(path) ? path : `${API_BASE_RESOLVED}${path}`;
 }
 
-/* ✅ NEW: normalize website URLs for Apply Now buttons */
 export function normalizeWebsite(url) {
   if (!url) return '';
   return /^https?:\/\//i.test(url) ? url : `https://${url}`;
@@ -98,12 +81,7 @@ export const healthAPI = { ping: () => unwrap(http.get('/health')) };
 
 export const authAPI = {
   login: (credentials) => unwrap(http.post('/auth/login', credentials)),
-  register: (payload) => {
-    const cleaned = Object.fromEntries(
-      Object.entries(payload).filter(([_, v]) => v !== '' && v !== null && v !== undefined)
-    );
-    return unwrap(http.post('/auth/register', cleaned));
-  },
+  register: (payload) => unwrap(http.post('/auth/register', payload)),
   verifyOTP: ({ email, otp }) => unwrap(http.post('/auth/verify-otp', { email, otp })),
   resendOTP: ({ email }) => unwrap(http.post('/auth/resend-otp', { email })),
   forgotPassword: ({ email }) => unwrap(http.post('/auth/forgot-password', { email })),
@@ -132,7 +110,6 @@ export const companiesAPI = {
 };
 companiesAPI.getAll = companiesAPI.list;
 
-/* ---- Uploads ---- */
 export const uploadsAPI = {
   async uploadCompanyLogo(file) {
     const formData = new FormData();
@@ -154,9 +131,6 @@ export const usersAPI = {
   remove: (id) => unwrap(http.delete(`/admin/users/${id}`)),
 };
 usersAPI.getAll = usersAPI.list;
-usersAPI.createUser = usersAPI.create;
-usersAPI.updateUser = usersAPI.update;
-usersAPI.deleteUser = usersAPI.remove;
 
 export const surveysAPI = {
   list: (params = {}) => unwrap(http.get('/surveys', { params })),
@@ -183,12 +157,12 @@ export const profileAPI = {
 
 export const adminAPI = { getStats: () => unwrap(http.get('/admin/stats')) };
 
-export function logApiBase() {
-  console.log('[API] Base URL:', API_BASE_RESOLVED, 'Root:', API_ROOT);
-}
-
 export const analyticsAPI = {
   logSearch: (term) => http.post('/analytics/search', { term }).catch(() => {}),
 };
+
+export function logApiBase() {
+  console.log('[API] Base URL:', API_BASE_RESOLVED, 'Root:', API_ROOT);
+}
 
 export default http;
