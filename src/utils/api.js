@@ -15,6 +15,8 @@ export const http = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+http.defaults.headers.common['Content-Type'] = 'application/json';
+
 export const httpRaw = axios.create({
   baseURL: API_BASE_RESOLVED,
   withCredentials: false,
@@ -32,16 +34,19 @@ export function setAuthToken(token) {
 }
 
 /* -------- Interceptors -------- */
-function attachRequestAuth(instance) {
-  instance.interceptors.request.use((cfg) => {
-    if (!cfg.headers?.Authorization) {
-      const token =
-        typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
-      if (token) cfg.headers = { ...cfg.headers, Authorization: `Bearer ${token}` };
-    }
-    return cfg;
-  });
-}
+instance.interceptors.request.use((cfg) => {
+  const token =
+    typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+  if (token && !cfg.headers.Authorization) {
+    cfg.headers.Authorization = `Bearer ${token}`;
+  }
+
+  // 🧩 Debug log — remove after confirming it works
+  // console.log('[Axios]', cfg.method?.toUpperCase(), cfg.url, '→', cfg.headers.Authorization);
+
+  return cfg;
+});
+
 function attachResponseNormalizer(instance) {
   instance.interceptors.response.use(
     (res) => res,
