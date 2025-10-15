@@ -46,44 +46,53 @@ function reducer(state, action) {
 }
 
 function normalizeError(err, fallback = 'Something went wrong') {
+  if (err?.response?.data?.message) return err.response.data.message;
   if (err?.message) return err.message;
   return fallback;
 }
 
-// role helpers (work with role | userType | type)
-const getRoleFromUser = (u) => (u?.role || u?.userType || u?.type || null);
+const getRoleFromUser = (u) => u?.role || u?.userType || u?.type || null;
 
 export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initial);
 
-  // Rehydrate token on refresh and fetch /auth/me
   useEffect(() => {
-    const t = localStorage.getItem('token');
-    if (t) {
-      setAuthToken(t);
-      authAPI
-        .me()
-        .then((me) =>
-          dispatch({ type: ACTIONS.LOGIN_SUCCESS, payload: { user: me, token: t } })
-        )
-        .catch(() => {
-          localStorage.removeItem('token');
-          setAuthToken(null);
-          dispatch({ type: ACTIONS.SET_LOADING, payload: false });
-        });
-    } else {
+    const token = localStorage.getItem('token');
+    if (!token) {
       dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+      return;
     }
+
+    // Set auth header globally
+    setAuthToken(token);
+
+    // Try fetching current user
+    authAPI
+      .me()
+      .then((user) => {
+        dispatch({ type: ACTIONS.LOGIN_SUCCESS, payload: { user, token } });
+      })
+      .catch((err) => {
+        console.warn('[AuthContext] /auth/me failed, clearing token', err);
+        localStorage.removeItem('token');
+        setAuthToken(null);
+        dispatch({ type: ACTIONS.SET_LOADING, payload: false });
+      });
   }, []);
 
   async function login({ email, password }) {
     dispatch({ type: ACTIONS.SET_LOADING, payload: true });
     try {
       const { user, token } = await authAPI.login({ email, password });
+
+      // Save to localStorage
       localStorage.setItem('token', token);
+
+      // Attach to axios globally
       setAuthToken(token);
+
       dispatch({ type: ACTIONS.LOGIN_SUCCESS, payload: { user, token } });
-      toast.success('Logged in!');
+      toast.success('Logged in successfully');
       return { success: true, user };
     } catch (err) {
       const msg = normalizeError(err, 'Login failed');
@@ -102,15 +111,14 @@ export function AuthProvider({ children }) {
 
   async function refreshMe() {
     try {
-      const me = await authAPI.me();
-      dispatch({ type: ACTIONS.UPDATE_USER, payload: me });
-      return me;
+      const user = await authAPI.me();
+      dispatch({ type: ACTIONS.UPDATE_USER, payload: user });
+      return user;
     } catch {
       return null;
     }
   }
 
-  // NEW: safe updater so header re-renders after profile save/photo change
   function updateUser(patchOrFn) {
     const next =
       typeof patchOrFn === 'function'
@@ -120,7 +128,7 @@ export function AuthProvider({ children }) {
     return next;
   }
 
-  // role helpers for UI
+  // Role helpers
   const role = getRoleFromUser(state.user);
   const hasRole = (...roles) => roles.includes(role);
   const isAdmin = () => role === 'admin';
@@ -131,7 +139,7 @@ export function AuthProvider({ children }) {
     login,
     logout,
     refreshMe,
-    updateUser, // expose
+    updateUser,
     role,
     hasRole,
     isAdmin,
