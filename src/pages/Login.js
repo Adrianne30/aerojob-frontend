@@ -173,14 +173,6 @@ const Login = () => {
                 <span className="px-2 bg-white text-gray-500">Demo Account:</span>
               </div>
             </div>
-
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-600 mb-2">
-                <strong>Admin:</strong> adccadmin@aerojob.com / admin123
-              </p>
-
-              <p className="text-sm text-gray-600 mb-2"><strong>Student:</strong> marynathaliesarol@philsca.edu.ph / 123123</p>
-            </div>
           </div>
         </div>
       </div>
